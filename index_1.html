@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Materialausleihe</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#F5F2EC; --surface:#FFFFFF; --surface-2:#ECE7DD; --text:#24211B; --text-muted:#726B5C;
+    --border:#DDD6C7; --accent:#2E6A5C; --accent-contrast:#FFFFFF; --accent-soft:#E1EDE7;
+    --available-bg:#E3F0E6; --available-text:#1F7A45; --borrowed-bg:#FBE8E1; --borrowed-text:#B0472A;
+    --reserved-bg:#E6ECF9; --reserved-text:#2E52A8; --partial-bg:#FBF1DC; --partial-text:#93641B;
+    --shadow:0 1px 2px rgba(36,33,27,.06), 0 6px 20px rgba(36,33,27,.06);
+    --radius-lg:18px; --radius-md:12px; --radius-sm:8px;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#17181A; --surface:#202226; --surface-2:#26282C; --text:#ECE8E0; --text-muted:#9C9689;
+      --border:#34363A; --accent:#57B39A; --accent-contrast:#0E1613; --accent-soft:#1E322B;
+      --available-bg:#173323; --available-text:#72D69B; --borrowed-bg:#3A241E; --borrowed-text:#F0967D;
+      --reserved-bg:#1E2A42; --reserved-text:#9AB6EE; --partial-bg:#3A2F16; --partial-text:#E3B15C;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      color-scheme:dark;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size:14.5px; line-height:1.5;
+  }
+  h1,h2,h3{font-family:"Fraunces", Georgia, serif; margin:0; text-wrap:balance;}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace;}
+  img{max-width:100%;}
+  [hidden]{display:none !important;}
+
+  .page{max-width:1080px; margin:0 auto; padding-inline:16px;}
+  .topbar{position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--border); z-index:20; padding-block:14px; margin-bottom:20px;}
+  .topbar-inner{max-width:1080px; margin:0 auto; padding-inline:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-icon{font-size:26px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:var(--accent-soft); border-radius:var(--radius-md); flex:none;}
+  .brand h1{font-size:21px; font-weight:600;}
+  .subtitle{color:var(--text-muted); font-size:12.5px; margin-top:1px;}
+  .topbar-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .name-field{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted);}
+  .name-field input{
+    font-family:inherit; font-size:13px; padding:7px 10px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text); width:130px;
+  }
+
+  .btn{font-family:inherit; font-size:13.5px; font-weight:600; border-radius:999px; border:1px solid transparent; padding:9px 16px; cursor:pointer; transition:transform .08s ease, opacity .15s ease; white-space:nowrap;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--accent); color:var(--accent-contrast);}
+  .btn-primary:hover{opacity:.92;}
+  .btn-primary:disabled{opacity:.45; cursor:not-allowed;}
+  .btn-ghost{background:transparent; color:var(--text); border-color:var(--border);}
+  .btn-ghost:hover{background:var(--surface-2);}
+  .btn-sm{padding:7px 13px; font-size:12.5px;}
+  .btn-xs{padding:5px 10px; font-size:11.5px; border-radius:999px;}
+  .btn-link{background:none; border:none; color:var(--accent); font-weight:600; font-size:12.5px; cursor:pointer; padding:4px 2px;}
+  .btn-icon{background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; line-height:1; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none;}
+  .btn-icon:hover{background:var(--surface-2); color:var(--text);}
+  .btn-icon.danger:hover{background:var(--borrowed-bg); color:var(--borrowed-text);}
+
+  .toolbar{display:flex; flex-direction:column; gap:12px; margin-bottom:18px;}
+  #searchInput{width:100%; padding:10px 14px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; font-size:14px;}
+  #searchInput:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{padding:6px 13px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-size:12.5px; font-weight:500; cursor:pointer;}
+  .chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-contrast);}
+
+  .layout{display:grid; grid-template-columns:1fr 300px; gap:24px; align-items:start; padding-bottom:48px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} }
+
+  .category-group{margin-bottom:26px;}
+  .category-title{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;}
+  .items-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:12px;}
+
+  .item-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:10px;}
+  .item-card-head{display:flex; align-items:flex-start; gap:10px;}
+  .item-icon{font-size:19px; width:38px; height:38px; flex:none; display:flex; align-items:center; justify-content:center; background:var(--surface-2); border-radius:var(--radius-sm);}
+  .item-info{flex:1; min-width:0;}
+  .item-info h3{font-size:14.5px; font-weight:600;}
+  .item-category{font-size:11.5px; color:var(--text-muted);}
+  .item-delete-wrap{flex:none;}
+
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; width:fit-content;}
+  .pill-available{background:var(--available-bg); color:var(--available-text);}
+  .pill-borrowed{background:var(--borrowed-bg); color:var(--borrowed-text);}
+  .pill-reserved{background:var(--reserved-bg); color:var(--reserved-text);}
+  .pill-dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex:none;}
+
+  .item-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .holders-list, .upcoming-list{display:flex; flex-direction:column; gap:6px; border-top:1px dashed var(--border); padding-top:8px;}
+  .holder-row, .upcoming-row{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--text-muted);}
+  .holder-row .who, .upcoming-row .who{color:var(--text);}
+
+  .agenda{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow); position:sticky; top:86px;}
+  .agenda h2{font-size:15px; font-weight:600; margin-bottom:12px;}
+  .agenda-list{display:flex; flex-direction:column; gap:10px;}
+  .agenda-row{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--border);}
+  .agenda-row:last-child{border-bottom:none; padding-bottom:0;}
+  .agenda-main{display:flex; gap:9px;}
+  .agenda-date{font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--accent); background:var(--accent-soft); border-radius:6px; padding:3px 6px; height:fit-content; white-space:nowrap;}
+  .agenda-item-name{font-size:12.5px; font-weight:600;}
+  .agenda-who{font-size:11.5px; color:var(--text-muted);}
+
+  .empty-state{color:var(--text-muted); font-size:13px; padding:20px 0;}
+  .empty-state.small{padding:6px 0;}
+  .empty-hero{background:var(--surface); border:1px dashed var(--border); border-radius:var(--radius-lg); padding:36px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .empty-hero span{font-size:34px;}
+  .empty-hero p{color:var(--text-muted); font-size:13.5px; max-width:340px;}
+
+  .modal-backdrop{position:fixed; inset:0; background:rgba(20,18,14,.45); display:flex; align-items:flex-end; justify-content:center; z-index:100; padding:0;}
+  @media (min-width:600px){ .modal-backdrop{align-items:center; padding:16px;} }
+  .modal{background:var(--surface); width:100%; max-width:420px; border-radius:20px 20px 0 0; padding:22px 20px; box-shadow:var(--shadow); max-height:88vh; overflow-y:auto;}
+  @media (min-width:600px){ .modal{border-radius:var(--radius-lg);} }
+  .modal h2{font-size:18px; margin-bottom:4px;}
+  .modal-item-name{color:var(--text-muted); font-size:13px; margin-bottom:14px;}
+  .modal label{display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:600; color:var(--text-muted); margin-bottom:14px;}
+  .modal input[type="text"], .modal input[type="number"], .modal input[type="email"], .modal input[type="password"]{
+    font-family:inherit; font-size:14px; font-weight:400; color:var(--text); background:var(--bg);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px;
+  }
+  .icon-picker{display:flex; flex-wrap:wrap; gap:6px;}
+  .icon-opt{width:36px; height:36px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .icon-opt[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft);}
+  .hint{font-size:12px; color:var(--borrowed-text); margin:-6px 0 12px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:6px;}
+
+  .banner{background:var(--reserved-bg); color:var(--reserved-text); border-radius:var(--radius-md); padding:12px 14px; font-size:13px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+
+  .cal-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .cal-header h3{font-size:14.5px; font-weight:600;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+  .cal-weekday{font-size:10.5px; color:var(--text-muted); text-align:center; font-weight:600; padding-bottom:2px;}
+  .cal-day{
+    aspect-ratio:1; border-radius:8px; border:1px solid transparent; background:var(--surface-2);
+    font-size:12px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--text); gap:0;
+  }
+  .cal-day.pad{visibility:hidden; cursor:default;}
+  .cal-day.avail{background:var(--available-bg); color:var(--available-text);}
+  .cal-day.partial{background:var(--partial-bg); color:var(--partial-text);}
+  .cal-day.full{background:var(--borrowed-bg); color:var(--borrowed-text);}
+  .cal-day.today{border-color:var(--accent);}
+  .cal-day.selected{outline:2px solid var(--accent); outline-offset:1px;}
+  .cal-day.inrange{filter:brightness(0.96);}
+  .cal-day-num{font-weight:600; line-height:1.2;}
+  .cal-day-sub{font-size:8.5px; opacity:.85;}
+  .cal-legend{display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--text-muted); margin-top:10px;}
+  .cal-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .cal-legend i{width:9px; height:9px; border-radius:3px; display:inline-block;}
+  .cal-detail{margin-top:12px; border-top:1px solid var(--border); padding-top:10px; font-size:12.5px; min-height:18px; color:var(--text-muted);}
+  .cal-detail .who{font-weight:600; color:var(--text);}
+  .cal-range-label{font-size:12px; color:var(--text-muted); margin:10px 0 14px;}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">🎬</span>
+        <div>
+          <h1>Materialausleihe</h1>
+          <p class="subtitle">Technisches Material fürs Kollegium</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="name-field">
+          <span>Dein Name:</span>
+          <input type="text" id="myNameInput" placeholder="z. B. Fabsi" autocomplete="off" />
+        </div>
+        <button class="btn btn-ghost btn-xs" id="adminToggleBtn" type="button">Verwaltung</button>
+        <button class="btn btn-primary" id="addItemBtn" type="button" hidden>+ Material</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="content">
+    <p class="banner" id="noDbBanner" hidden>Die Verbindung zur Datenbank konnte nicht hergestellt werden. Bitte lade die Seite neu.</p>
+
+    <div class="toolbar">
+      <input type="search" id="searchInput" placeholder="Material suchen…" aria-label="Material suchen" />
+      <div class="chips" id="categoryChips" role="group" aria-label="Kategorie filtern"></div>
+    </div>
+
+    <div class="layout">
+      <section aria-label="Materialliste">
+        <div id="itemsContainer"></div>
+        <div class="empty-hero" id="emptyHero" hidden>
+          <span aria-hidden="true">🎒</span>
+          <h3>Noch kein Material erfasst</h3>
+          <p id="emptyHeroText">Füge das erste Gerät hinzu, zum Beispiel eine Kamera, ein Stativ oder ein Technik-Böxli.</p>
+          <button class="btn btn-primary" id="emptyAddBtn" type="button" hidden>Erstes Material hinzufügen</button>
+        </div>
+      </section>
+
+      <aside class="agenda" aria-label="Nächste Reservationen">
+        <h2>Nächste Reservationen</h2>
+        <div class="agenda-list" id="agendaList"></div>
+        <p class="empty-state small" id="agendaEmpty" hidden>Keine anstehenden Reservationen.</p>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="adminModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2>Verwaltung</h2>
+    <p class="modal-item-name">Nur für die Materialverwaltung (Hinzufügen / Löschen).</p>
+    <form id="adminForm">
+      <label for="adminEmail">E-Mail
+        <input required id="adminEmail" type="email" autocomplete="username" />
+      </label>
+      <label for="adminPassword">Passwort
+        <input required id="adminPassword" type="password" autocomplete="current-password" />
+      </label>
+      <p class="hint" id="adminHint" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button type="submit" class="btn btn-primary">Anmelden</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addItemModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addItemTitle">
+    <h2 id="addItemTitle">Neues Material</h2>
+    <p class="modal-item-name">Wird für alle im Kollegium sichtbar.</p>
+    <form id="addItemForm">
+      <label for="newItemName">Bezeichnung
+        <input required id="newItemName" type="text" placeholder="z. B. Kamera Canon EOS" autocomplete="off" />
+      </label>
+      <label for="newItemCategory">Kategorie
+        <input id="newItemCategory" list="categoryOptions" type="text" placeholder="z. B. Kamera" autocomplete="off" />
+        <datalist id="categoryOptions"></datalist>
+      </label>
+      <label for="newItemQty">Bestand (Anzahl Stück)
+        <input id="newItemQty" type="number" min="1" step="1" value="1" />
+      </label>
+      <label>Symbol
+        <div class="icon-picker" id="iconPicker"></div>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button type="submit" class="btn btn-primary">Hinzufügen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="borrowModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="borrowTitle">
+    <h2 id="borrowTitle">Ausleihen</h2>
+    <p class="modal-item-name" id="borrowItemName"></p>
+    <form id="borrowForm">
+      <label for="borrowQty">Anzahl
+        <input required id="borrowQty" type="number" min="1" step="1" value="1" />
+      </label>
+      <p class="hint" id="borrowHint" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button type="submit" class="btn btn-primary" id="borrowSubmit">Ausleihen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="reserveModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reserveTitle">
+    <h2 id="reserveTitle">Reservieren</h2>
+    <p class="modal-item-name" id="reserveItemName"></p>
+    <div class="cal-header">
+      <button type="button" class="btn-icon" id="reserveCalPrev" aria-label="Vorheriger Monat">‹</button>
+      <h3 id="reserveCalMonthLabel"></h3>
+      <button type="button" class="btn-icon" id="reserveCalNext" aria-label="Nächster Monat">›</button>
+    </div>
+    <div class="cal-grid" id="reserveCalGrid"></div>
+    <p class="cal-range-label" id="reserveRangeLabel"></p>
+    <form id="reserveForm">
+      <label for="reserveQty" id="reserveQtyWrap" hidden>Anzahl
+        <input id="reserveQty" type="number" min="1" step="1" value="1" />
+      </label>
+      <p class="hint" id="reserveConflictHint" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button type="submit" class="btn btn-primary" id="reserveSubmit">Reservieren</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="calendarModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+    <h2 id="calendarTitle">Kalender</h2>
+    <div class="cal-header">
+      <button type="button" class="btn-icon" id="calPrev" aria-label="Vorheriger Monat">‹</button>
+      <h3 id="calMonthLabel"></h3>
+      <button type="button" class="btn-icon" id="calNext" aria-label="Nächster Monat">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend">
+      <span><i style="background:var(--available-bg)"></i>Frei</span>
+      <span><i style="background:var(--partial-bg)"></i>Teilweise vergeben</span>
+      <span><i style="background:var(--borrowed-bg)"></i>Voll vergeben</span>
+    </div>
+    <div class="cal-detail" id="calDetail">Klicke auf einen Tag für Details.</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>Schliessen</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import {
+    getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
+    onSnapshot, query, orderBy, limit
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+
+  // ======================================================================
+  // HIER DEINE FIREBASE-KONFIGURATION EINFÜGEN
+  // (Firebase-Konsole -> Projekteinstellungen -> "Deine Apps" -> Web-App)
+  // ======================================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyAammpLF8Fq0av_mdV9dvG6wAuCPDeQJhM",
+    authDomain: "materialausleihe-picts.firebaseapp.com",
+    projectId: "materialausleihe-picts",
+    storageBucket: "materialausleihe-picts.firebasestorage.app",
+    messagingSenderId: "1027451556967",
+    appId: "1:1027451556967:web:d833f2e6be2f898fdc30c2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  var isAdmin = false;
+
+  // ---------- date helpers ----------
+  function isoDate(d){
+    var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    return y+"-"+m+"-"+day;
+  }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function isoOf(y,m,day){ return y+"-"+pad2(m+1)+"-"+pad2(day); }
+  function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+  function fmt(iso){ if(!iso) return ""; var d = new Date(iso+"T00:00:00"); return d.toLocaleDateString('de-CH', {day:'2-digit', month:'2-digit'}); }
+  var TODAY = isoDate(new Date());
+  var MONTH_NAMES = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  var WEEKDAYS = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+
+  var ICON_CHOICES = ["📦","📷","🎥","🎙️","🎧","📽️","🔊","💡","🖥️","🎮","🔌","🧰"];
+
+  // ---------- state ----------
+  var myName = localStorage.getItem("ml_name") || "";
+  var items = [], loans = [], reservations = [];
+  var filterText = "", filterCategory = null;
+  var iconPickerValue = ICON_CHOICES[0];
+  var borrowContext = null, reserveContext = null;
+  var pendingDelete = null;
+  var reserveCursor = new Date();
+  var reserveSelection = { from: null, to: null };
+  var calItemId = null, calCursor = new Date();
+
+  // ---------- dom ----------
+  var el = {};
+  ["itemsContainer","emptyHero","emptyHeroText","emptyAddBtn","addItemBtn","addItemModal","addItemForm",
+   "newItemName","newItemCategory","categoryOptions","newItemQty","iconPicker",
+   "borrowModal","borrowForm","borrowItemName","borrowQty","borrowHint","borrowSubmit",
+   "reserveModal","reserveForm","reserveItemName","reserveQtyWrap","reserveQty","reserveConflictHint","reserveSubmit",
+   "reserveCalPrev","reserveCalNext","reserveCalMonthLabel","reserveCalGrid","reserveRangeLabel",
+   "calendarModal","calendarTitle","calPrev","calNext","calMonthLabel","calGrid","calDetail",
+   "searchInput","categoryChips","agendaList","agendaEmpty","noDbBanner","myNameInput",
+   "adminToggleBtn","adminModal","adminForm","adminEmail","adminPassword","adminHint"
+  ].forEach(function(id){ el[id] = document.getElementById(id); });
+
+  el.myNameInput.value = myName;
+  el.myNameInput.addEventListener("change", function(){
+    myName = this.value.trim();
+    localStorage.setItem("ml_name", myName);
+  });
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function clamp(n, min, max){ n = Math.floor(Number(n) || 0); if(n < min) n = min; if(max != null && n > max) n = max; return n; }
+  function requireName(){
+    if(myName) return true;
+    el.myNameInput.focus();
+    el.myNameInput.style.borderColor = "var(--borrowed-text)";
+    setTimeout(function(){ el.myNameInput.style.borderColor = ""; }, 1500);
+    return false;
+  }
+
+  // ---------- admin (Firebase Auth) ----------
+  onAuthStateChanged(auth, function(user){
+    isAdmin = !!user;
+    el.addItemBtn.hidden = !isAdmin;
+    el.adminToggleBtn.textContent = isAdmin ? "Verwaltung: an (abmelden)" : "Verwaltung";
+    render();
+  });
+  el.adminToggleBtn.addEventListener("click", function(){
+    if(isAdmin){ signOut(auth); } else { el.adminHint.hidden = true; openModal(el.adminModal); }
+  });
+  el.adminForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var email = el.adminEmail.value.trim(), pw = el.adminPassword.value;
+    try{
+      await signInWithEmailAndPassword(auth, email, pw);
+      closeModal(el.adminModal);
+      el.adminForm.reset();
+    }catch(err){
+      el.adminHint.textContent = "Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen.";
+      el.adminHint.hidden = false;
+    }
+  });
+
+  // ---------- stock helpers ----------
+  function totalQty(item){ var q = Number(item.quantity); return (q && q > 0) ? q : 1; }
+  function loansFor(itemId){ return loans.filter(function(l){ return l.itemId === itemId; }); }
+  function borrowedQty(itemId){ return loansFor(itemId).reduce(function(s,l){ return s + (Number(l.qty) || 1); }, 0); }
+  function reservedTodayList(itemId){ return reservations.filter(function(r){ return r.itemId === itemId && r.dateFrom <= TODAY && r.dateTo >= TODAY; }); }
+  function reservedTodayQty(itemId){ return reservedTodayList(itemId).reduce(function(s,r){ return s + (Number(r.qty) || 1); }, 0); }
+  function availableNow(item){ return Math.max(0, totalQty(item) - borrowedQty(item.id) - reservedTodayQty(item.id)); }
+  function upcomingFor(itemId){
+    return reservations.filter(function(r){ return r.itemId === itemId && r.dateFrom > TODAY; })
+      .sort(function(a,b){ return a.dateFrom < b.dateFrom ? -1 : 1; });
+  }
+  function dayStatus(itemId, iso){
+    var item = items.find(function(i){ return i.id === itemId; });
+    if(!item) return {avail:0,total:1,used:0,segments:[]};
+    var total = totalQty(item);
+    var segments = [];
+    loansFor(itemId).forEach(function(l){
+      var start = (l.borrowedAt||"").slice(0,10);
+      if(iso >= start){ segments.push({kind:'loan', name:l.borrowerName || "Kolleg:in", qty:l.qty||1}); }
+    });
+    reservations.filter(function(r){ return r.itemId===itemId; }).forEach(function(r){
+      if(iso>=r.dateFrom && iso<=r.dateTo){ segments.push({kind:'reservation', name:r.borrowerName || "Kolleg:in", qty:r.qty||1}); }
+    });
+    var used = segments.reduce(function(s,x){ return s+(x.qty||1); }, 0);
+    return {avail: Math.max(0,total-used), total: total, used: used, segments: segments};
+  }
+
+  // ---------- generic calendar grid renderer ----------
+  function renderCalGrid(gridEl, year, month, itemId, opts){
+    opts = opts || {};
+    gridEl.innerHTML = "";
+    WEEKDAYS.forEach(function(w){ var wd = document.createElement("div"); wd.className="cal-weekday"; wd.textContent=w; gridEl.appendChild(wd); });
+    var first = new Date(year, month, 1);
+    var startPad = (first.getDay() + 6) % 7;
+    var total = daysInMonth(year, month);
+    for(var p=0; p<startPad; p++){ var pad=document.createElement("div"); pad.className="cal-day pad"; gridEl.appendChild(pad); }
+    for(var day=1; day<=total; day++){
+      var iso = isoOf(year, month, day);
+      var st = dayStatus(itemId, iso);
+      var cell = document.createElement("div");
+      cell.className = "cal-day " + (st.used === 0 ? "avail" : st.used >= st.total ? "full" : "partial");
+      if(iso === TODAY) cell.classList.add("today");
+      if(opts.selection && opts.selection.from){
+        var sel = opts.selection;
+        if(sel.to && iso >= sel.from && iso <= sel.to) cell.classList.add("inrange");
+        if(iso === sel.from || iso === sel.to) cell.classList.add("selected");
+      }
+      cell.innerHTML = '<span class="cal-day-num"></span>' + (st.total > 1 ? '<span class="cal-day-sub"></span>' : '');
+      cell.querySelector(".cal-day-num").textContent = day;
+      if(st.total > 1){ cell.querySelector(".cal-day-sub").textContent = (st.total - st.used) + "/" + st.total; }
+      cell.addEventListener("click", (function(clickedIso){ return function(){ opts.onDayClick && opts.onDayClick(clickedIso); }; })(iso));
+      gridEl.appendChild(cell);
+    }
+  }
+
+  // ---------- icon picker ----------
+  function buildIconPicker(){
+    el.iconPicker.innerHTML = "";
+    ICON_CHOICES.forEach(function(icon){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "icon-opt"; b.textContent = icon;
+      b.setAttribute("aria-pressed", icon === iconPickerValue ? "true" : "false");
+      b.addEventListener("click", function(){
+        iconPickerValue = icon;
+        Array.prototype.forEach.call(el.iconPicker.children, function(c){
+          c.setAttribute("aria-pressed", c.textContent === icon ? "true" : "false");
+        });
+      });
+      el.iconPicker.appendChild(b);
+    });
+  }
+  buildIconPicker();
+
+  // ---------- modals ----------
+  function openModal(node){ node.hidden = false; }
+  function closeModal(node){ node.hidden = true; }
+  document.querySelectorAll(".modal-backdrop").forEach(function(backdrop){
+    backdrop.addEventListener("click", function(e){ if(e.target === backdrop) closeModal(backdrop); });
+    backdrop.querySelectorAll("[data-close]").forEach(function(btn){ btn.addEventListener("click", function(){ closeModal(backdrop); }); });
+  });
+
+  function openAddItemModal(){
+    if(!isAdmin) return;
+    el.newItemName.value = ""; el.newItemCategory.value = ""; el.newItemQty.value = "1";
+    iconPickerValue = ICON_CHOICES[0]; buildIconPicker();
+    openModal(el.addItemModal);
+    setTimeout(function(){ el.newItemName.focus(); }, 30);
+  }
+  el.addItemBtn.addEventListener("click", openAddItemModal);
+  el.emptyAddBtn.addEventListener("click", openAddItemModal);
+
+  function populateCategoryOptions(){
+    var cats = items.map(function(i){ return i.category; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; });
+    el.categoryOptions.innerHTML = "";
+    cats.forEach(function(c){ var opt = document.createElement("option"); opt.value = c; el.categoryOptions.appendChild(opt); });
+  }
+
+  el.addItemForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    if(!isAdmin) return;
+    var name = el.newItemName.value.trim();
+    if(!name) return;
+    var category = el.newItemCategory.value.trim() || "Sonstiges";
+    var qty = clamp(el.newItemQty.value, 1, null);
+    try{
+      await addDoc(collection(db, "items"), {
+        name: name, category: category, icon: iconPickerValue, quantity: qty,
+        createdAt: new Date().toISOString()
+      });
+      closeModal(el.addItemModal);
+    }catch(err){ console.error(err); alert("Hinzufügen hat nicht geklappt: " + err.message); }
+  });
+
+  function openBorrowModal(item){
+    var avail = availableNow(item);
+    borrowContext = { itemId: item.id, itemName: item.name, available: avail };
+    el.borrowItemName.textContent = item.name + " · verfügbar: " + avail;
+    el.borrowQty.value = "1"; el.borrowQty.max = String(avail);
+    el.borrowHint.hidden = true;
+    openModal(el.borrowModal);
+  }
+  el.borrowForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    if(!borrowContext || !requireName()) return;
+    var qty = clamp(el.borrowQty.value, 1, null);
+    if(qty > borrowContext.available){
+      el.borrowHint.textContent = "Nur noch " + borrowContext.available + " Stück verfügbar.";
+      el.borrowHint.hidden = false;
+      return;
+    }
+    el.borrowSubmit.disabled = true;
+    try{
+      await addDoc(collection(db, "loans"), {
+        itemId: borrowContext.itemId, itemName: borrowContext.itemName,
+        borrowerName: myName, qty: qty, borrowedAt: new Date().toISOString()
+      });
+      closeModal(el.borrowModal);
+    }catch(err){
+      console.error(err);
+      el.borrowHint.textContent = "Das hat leider nicht geklappt.";
+      el.borrowHint.hidden = false;
+    }finally{ el.borrowSubmit.disabled = false; }
+  });
+
+  async function borrowNow(item){
+    if(!requireName()) return;
+    if(totalQty(item) > 1){ openBorrowModal(item); return; }
+    try{
+      await addDoc(collection(db, "loans"), {
+        itemId: item.id, itemName: item.name, borrowerName: myName, qty: 1, borrowedAt: new Date().toISOString()
+      });
+    }catch(err){ console.error(err); }
+  }
+  async function returnLoan(loanId){
+    try{ await deleteDoc(doc(db, "loans", loanId)); }catch(err){ console.error(err); }
+  }
+
+  // ---------- reserve modal (calendar picker) ----------
+  function drawReserveCal(){
+    el.reserveCalMonthLabel.textContent = MONTH_NAMES[reserveCursor.getMonth()] + " " + reserveCursor.getFullYear();
+    renderCalGrid(el.reserveCalGrid, reserveCursor.getFullYear(), reserveCursor.getMonth(), reserveContext.itemId, {
+      selection: reserveSelection,
+      onDayClick: function(iso){
+        if(iso < TODAY) return;
+        if(!reserveSelection.from || reserveSelection.to){
+          reserveSelection = { from: iso, to: null };
+        } else if(iso < reserveSelection.from){
+          reserveSelection = { from: iso, to: reserveSelection.from };
+        } else {
+          reserveSelection.to = iso;
+        }
+        updateReserveRangeLabel();
+        drawReserveCal();
+      }
+    });
+  }
+  function updateReserveRangeLabel(){
+    if(reserveSelection.from && reserveSelection.to){
+      el.reserveRangeLabel.textContent = reserveSelection.from === reserveSelection.to
+        ? "Ausgewählt: " + fmt(reserveSelection.from)
+        : "Ausgewählt: " + fmt(reserveSelection.from) + " – " + fmt(reserveSelection.to);
+    } else if(reserveSelection.from){
+      el.reserveRangeLabel.textContent = "Start: " + fmt(reserveSelection.from) + " · wähle nun den letzten Tag.";
+    } else {
+      el.reserveRangeLabel.textContent = "Wähle den ersten Tag im Kalender.";
+    }
+  }
+  el.reserveCalPrev.addEventListener("click", function(){ reserveCursor.setMonth(reserveCursor.getMonth()-1); drawReserveCal(); });
+  el.reserveCalNext.addEventListener("click", function(){ reserveCursor.setMonth(reserveCursor.getMonth()+1); drawReserveCal(); });
+
+  function openReserveModal(item){
+    var total = totalQty(item);
+    reserveContext = { itemId: item.id, itemName: item.name, total: total };
+    el.reserveItemName.textContent = item.name;
+    reserveCursor = new Date();
+    reserveSelection = { from: null, to: null };
+    el.reserveConflictHint.hidden = true;
+    updateReserveRangeLabel();
+    if(total > 1){ el.reserveQtyWrap.hidden = false; el.reserveQty.value = "1"; el.reserveQty.max = String(total); }
+    else { el.reserveQtyWrap.hidden = true; el.reserveQty.value = "1"; }
+    drawReserveCal();
+    openModal(el.reserveModal);
+  }
+
+  el.reserveForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    if(!reserveContext || !requireName()) return;
+    var from = reserveSelection.from, to = reserveSelection.to || reserveSelection.from;
+    if(!from){
+      el.reserveConflictHint.textContent = "Bitte wähle zuerst einen Zeitraum im Kalender.";
+      el.reserveConflictHint.hidden = false;
+      return;
+    }
+    var qty = reserveContext.total > 1 ? clamp(el.reserveQty.value, 1, reserveContext.total) : 1;
+    var overlapping = reservations.filter(function(r){ return r.itemId === reserveContext.itemId && r.dateFrom <= to && r.dateTo >= from; });
+    var overlappingQty = overlapping.reduce(function(s,r){ return s + (Number(r.qty) || 1); }, 0);
+    if(overlappingQty + qty > reserveContext.total){
+      el.reserveConflictHint.textContent = "Für diesen Zeitraum sind bereits " + overlappingQty + " von " + reserveContext.total + " Stück reserviert.";
+      el.reserveConflictHint.hidden = false;
+      return;
+    }
+    el.reserveSubmit.disabled = true;
+    try{
+      await addDoc(collection(db, "reservations"), {
+        itemId: reserveContext.itemId, itemName: reserveContext.itemName, borrowerName: myName,
+        qty: qty, dateFrom: from, dateTo: to, createdAt: new Date().toISOString()
+      });
+      closeModal(el.reserveModal);
+    }catch(err){
+      console.error(err);
+      el.reserveConflictHint.textContent = "Das hat leider nicht geklappt.";
+      el.reserveConflictHint.hidden = false;
+    }finally{ el.reserveSubmit.disabled = false; }
+  });
+
+  async function pickUpReservation(item, reservation){
+    try{
+      await addDoc(collection(db, "loans"), {
+        itemId: item.id, itemName: item.name, borrowerName: reservation.borrowerName,
+        qty: reservation.qty || 1, borrowedAt: new Date().toISOString()
+      });
+      await deleteDoc(doc(db, "reservations", reservation.id));
+    }catch(err){ console.error(err); }
+  }
+  async function cancelReservation(id){
+    try{ await deleteDoc(doc(db, "reservations", id)); }catch(err){ console.error(err); }
+  }
+  async function deleteItem(itemId, btn){
+    if(!isAdmin) return;
+    if(pendingDelete !== itemId){
+      pendingDelete = itemId; btn.textContent = "❗"; btn.title = "Nochmals klicken zum Löschen";
+      setTimeout(function(){ if(pendingDelete === itemId){ pendingDelete = null; render(); } }, 4000);
+      return;
+    }
+    pendingDelete = null;
+    try{ await deleteDoc(doc(db, "items", itemId)); }catch(err){ console.error(err); }
+  }
+
+  // ---------- view calendar modal ----------
+  function openCalendarModal(item){
+    calItemId = item.id;
+    calCursor = new Date();
+    el.calendarTitle.textContent = "Kalender · " + item.name;
+    el.calDetail.textContent = "Klicke auf einen Tag für Details.";
+    drawCalModal();
+    openModal(el.calendarModal);
+  }
+  function drawCalModal(){
+    el.calMonthLabel.textContent = MONTH_NAMES[calCursor.getMonth()] + " " + calCursor.getFullYear();
+    renderCalGrid(el.calGrid, calCursor.getFullYear(), calCursor.getMonth(), calItemId, {
+      onDayClick: function(iso){
+        var st = dayStatus(calItemId, iso);
+        if(!st.segments.length){ el.calDetail.textContent = fmt(iso) + ": frei, " + st.total + " von " + st.total + " verfügbar."; return; }
+        var parts = st.segments.map(function(s){
+          return (s.qty > 1 ? s.qty + "× " : "") + s.name + (s.kind === 'reservation' ? " (reserviert)" : " (ausgeliehen)");
+        });
+        el.calDetail.innerHTML = '<span class="who">' + fmt(iso) + ':</span> ' + escapeHtml(parts.join(", "));
+      }
+    });
+  }
+  el.calPrev.addEventListener("click", function(){ calCursor.setMonth(calCursor.getMonth()-1); drawCalModal(); });
+  el.calNext.addEventListener("click", function(){ calCursor.setMonth(calCursor.getMonth()+1); drawCalModal(); });
+
+  // ---------- search / filter ----------
+  el.searchInput.addEventListener("input", function(){ filterText = this.value.toLowerCase(); render(); });
+  function renderChips(categories){
+    el.categoryChips.innerHTML = "";
+    var all = document.createElement("button");
+    all.type = "button"; all.className = "chip"; all.textContent = "Alle";
+    all.setAttribute("aria-pressed", filterCategory === null ? "true" : "false");
+    all.addEventListener("click", function(){ filterCategory = null; render(); });
+    el.categoryChips.appendChild(all);
+    categories.forEach(function(cat){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = cat;
+      b.setAttribute("aria-pressed", filterCategory === cat ? "true" : "false");
+      b.addEventListener("click", function(){ filterCategory = (filterCategory === cat) ? null : cat; render(); });
+      el.categoryChips.appendChild(b);
+    });
+  }
+
+  // ---------- rendering ----------
+  function render(){
+    populateCategoryOptions();
+    renderItems();
+    renderAgenda();
+  }
+
+  function renderItems(){
+    var categories = items.map(function(i){ return i.category; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+    renderChips(categories);
+
+    var filtered = items.filter(function(it){
+      var matchesText = !filterText || it.name.toLowerCase().indexOf(filterText) !== -1;
+      var matchesCat = !filterCategory || it.category === filterCategory;
+      return matchesText && matchesCat;
+    });
+
+    el.emptyHero.hidden = items.length !== 0;
+    el.emptyAddBtn.hidden = !isAdmin;
+    el.emptyHeroText.textContent = isAdmin
+      ? "Füge das erste Gerät hinzu, zum Beispiel eine Kamera, ein Stativ oder ein Technik-Böxli."
+      : "Die Materialverwaltung hat hier noch nichts erfasst.";
+    el.itemsContainer.innerHTML = "";
+
+    var groups = {}, order = [];
+    filtered.forEach(function(it){
+      var cat = it.category || "Sonstiges";
+      if(!groups[cat]){ groups[cat] = []; order.push(cat); }
+      groups[cat].push(it);
+    });
+    order.sort();
+
+    order.forEach(function(cat){
+      var section = document.createElement("div");
+      section.className = "category-group";
+      var title = document.createElement("div");
+      title.className = "category-title"; title.textContent = cat;
+      section.appendChild(title);
+      var grid = document.createElement("div");
+      grid.className = "items-grid";
+      groups[cat].forEach(function(item){ grid.appendChild(renderCard(item)); });
+      section.appendChild(grid);
+      el.itemsContainer.appendChild(section);
+    });
+  }
+
+  function renderCard(item){
+    var card = document.createElement("article");
+    card.className = "item-card";
+    var total = totalQty(item);
+    var avail = availableNow(item);
+    var itemLoans = loansFor(item.id);
+    var todayReservations = reservedTodayList(item.id);
+
+    var head = document.createElement("div");
+    head.className = "item-card-head";
+    head.innerHTML =
+      '<span class="item-icon" aria-hidden="true">' + escapeHtml(item.icon || "📦") + '</span>' +
+      '<div class="item-info"><h3></h3><span class="item-category"></span></div>' +
+      '<div class="item-delete-wrap"></div>';
+    head.querySelector("h3").textContent = item.name;
+    head.querySelector(".item-category").textContent = item.category || "Sonstiges";
+    if(isAdmin){
+      var delBtn = document.createElement("button");
+      delBtn.type = "button"; delBtn.className = "btn-icon danger"; delBtn.title = "Material löschen"; delBtn.textContent = "✕";
+      delBtn.addEventListener("click", function(){ deleteItem(item.id, delBtn); });
+      head.querySelector(".item-delete-wrap").appendChild(delBtn);
+    }
+    card.appendChild(head);
+
+    var pill = document.createElement("span");
+    if(total > 1){
+      if(avail > 0){
+        pill.className = "pill pill-available";
+        pill.innerHTML = '<span class="pill-dot"></span><span></span>';
+        pill.querySelector("span:last-child").textContent = "Verfügbar: " + avail + " von " + total;
+      } else {
+        pill.className = "pill pill-borrowed";
+        pill.innerHTML = '<span class="pill-dot"></span><span>Alle ' + total + ' vergeben</span>';
+      }
+    } else if(itemLoans.length){
+      pill.className = "pill pill-borrowed";
+      pill.innerHTML = '<span class="pill-dot"></span><span></span>';
+      pill.querySelector("span:last-child").textContent = "Ausgeliehen · " + escapeHtml(itemLoans[0].borrowerName || "Kolleg:in");
+    } else if(todayReservations.length){
+      pill.className = "pill pill-reserved";
+      pill.innerHTML = '<span class="pill-dot"></span><span></span>';
+      pill.querySelector("span:last-child").textContent = "Heute reserviert · " + escapeHtml(todayReservations[0].borrowerName || "Kolleg:in");
+    } else {
+      pill.className = "pill pill-available";
+      pill.innerHTML = '<span class="pill-dot"></span><span>Verfügbar</span>';
+    }
+    card.appendChild(pill);
+
+    var actions = document.createElement("div");
+    actions.className = "item-actions";
+    if(total === 1 && itemLoans.length){
+      var backBtn = document.createElement("button");
+      backBtn.className = "btn btn-primary btn-sm"; backBtn.type = "button"; backBtn.textContent = "Zurückgeben";
+      backBtn.addEventListener("click", function(){ returnLoan(itemLoans[0].id); });
+      actions.appendChild(backBtn);
+    } else if(total === 1 && todayReservations.length){
+      var pickupBtn = document.createElement("button");
+      pickupBtn.className = "btn btn-primary btn-sm"; pickupBtn.type = "button"; pickupBtn.textContent = "Abholen";
+      pickupBtn.addEventListener("click", function(){ pickUpReservation(item, todayReservations[0]); });
+      actions.appendChild(pickupBtn);
+    } else if(avail > 0){
+      var borrowBtn = document.createElement("button");
+      borrowBtn.className = "btn btn-primary btn-sm"; borrowBtn.type = "button";
+      borrowBtn.textContent = total > 1 ? "Ausleihen" : "Jetzt ausleihen";
+      borrowBtn.addEventListener("click", function(){ borrowNow(item); });
+      actions.appendChild(borrowBtn);
+    }
+    var reserveBtn = document.createElement("button");
+    reserveBtn.className = "btn btn-ghost btn-sm"; reserveBtn.type = "button"; reserveBtn.textContent = "Reservieren";
+    reserveBtn.addEventListener("click", function(){ openReserveModal(item); });
+    actions.appendChild(reserveBtn);
+    var calBtn = document.createElement("button");
+    calBtn.className = "btn btn-ghost btn-sm"; calBtn.type = "button"; calBtn.textContent = "📅 Kalender";
+    calBtn.addEventListener("click", function(){ openCalendarModal(item); });
+    actions.appendChild(calBtn);
+    card.appendChild(actions);
+
+    if(total > 1 && (itemLoans.length || todayReservations.length)){
+      var holders = document.createElement("div");
+      holders.className = "holders-list";
+      itemLoans.forEach(function(l){
+        var row = document.createElement("div");
+        row.className = "holder-row";
+        row.innerHTML = '<span class="who"></span>';
+        row.querySelector(".who").textContent = (l.qty||1) + "× " + (l.borrowerName || "Kolleg:in");
+        var ret = document.createElement("button");
+        ret.className = "btn-link"; ret.type = "button"; ret.textContent = "Zurückgeben";
+        ret.addEventListener("click", function(){ returnLoan(l.id); });
+        row.appendChild(ret);
+        holders.appendChild(row);
+      });
+      todayReservations.forEach(function(r){
+        var row = document.createElement("div");
+        row.className = "holder-row";
+        row.innerHTML = '<span class="who"></span>';
+        row.querySelector(".who").textContent = (r.qty||1) + "× " + (r.borrowerName || "Kolleg:in") + " (reserviert)";
+        var pk = document.createElement("button");
+        pk.className = "btn-link"; pk.type = "button"; pk.textContent = "Abholen";
+        pk.addEventListener("click", function(){ pickUpReservation(item, r); });
+        row.appendChild(pk);
+        holders.appendChild(row);
+      });
+      card.appendChild(holders);
+    }
+
+    var upcoming = upcomingFor(item.id);
+    if(upcoming.length){
+      var list = document.createElement("div");
+      list.className = "upcoming-list";
+      upcoming.slice(0,3).forEach(function(r){
+        var row = document.createElement("div");
+        row.className = "upcoming-row";
+        row.innerHTML = '<span class="mono"></span><span class="who"></span>';
+        row.querySelector(".mono").textContent = fmt(r.dateFrom) + "–" + fmt(r.dateTo) + (r.qty > 1 ? " (" + r.qty + "×)" : "");
+        row.querySelector(".who").textContent = r.borrowerName || "Kolleg:in";
+        list.appendChild(row);
+      });
+      card.appendChild(list);
+    }
+
+    return card;
+  }
+
+  function renderAgenda(){
+    var upcoming = reservations.filter(function(r){ return r.dateFrom > TODAY; })
+      .sort(function(a,b){ return a.dateFrom < b.dateFrom ? -1 : 1; }).slice(0, 15);
+
+    el.agendaList.innerHTML = "";
+    el.agendaEmpty.hidden = upcoming.length !== 0;
+
+    upcoming.forEach(function(r){
+      var row = document.createElement("div");
+      row.className = "agenda-row";
+      var main = document.createElement("div");
+      main.className = "agenda-main";
+      main.innerHTML = '<span class="agenda-date mono"></span><div><div class="agenda-item-name"></div><div class="agenda-who"></div></div>';
+      main.querySelector(".agenda-date").textContent = fmt(r.dateFrom) + (r.dateFrom !== r.dateTo ? "–" + fmt(r.dateTo) : "");
+      main.querySelector(".agenda-item-name").textContent = r.itemName + (r.qty > 1 ? " (" + r.qty + "×)" : "");
+      main.querySelector(".agenda-who").textContent = r.borrowerName || "Kolleg:in";
+      row.appendChild(main);
+      var cancel = document.createElement("button");
+      cancel.className = "btn-icon"; cancel.type = "button"; cancel.title = "Reservation stornieren"; cancel.textContent = "✕";
+      cancel.addEventListener("click", function(){ cancelReservation(r.id); });
+      row.appendChild(cancel);
+      el.agendaList.appendChild(row);
+    });
+  }
+
+  // ---------- live subscriptions ----------
+  function mapDocs(snap){ return snap.docs.map(function(d){ var data = d.data() || {}; data.id = d.id; return data; }); }
+
+  onSnapshot(query(collection(db, "items"), orderBy("createdAt", "asc"), limit(500)),
+    function(snap){ items = mapDocs(snap); render(); },
+    function(err){ console.error("items", err); el.noDbBanner.hidden = false; }
+  );
+  onSnapshot(query(collection(db, "loans"), orderBy("borrowedAt", "asc"), limit(1000)),
+    function(snap){ loans = mapDocs(snap); render(); },
+    function(err){ console.error("loans", err); }
+  );
+  onSnapshot(query(collection(db, "reservations"), orderBy("dateFrom", "asc"), limit(1000)),
+    function(snap){ reservations = mapDocs(snap); render(); },
+    function(err){ console.error("reservations", err); }
+  );
+
+  render();
+</script>
+</body>
+</html>
